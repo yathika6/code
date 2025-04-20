@@ -1,0 +1,176 @@
+Program: 
+ 
+TCL file: 
+#Create a simulator object 
+set ns [new Simulator] 
+ 
+ 
+#Define different colors for data flows (for NAM) 
+ 
+$ns color 1 Blue 
+ 
+$ns color 2 Red 
+ 
+ 
+ 
+set tf [open out1.tr w] 
+ 
+$ns trace-all Stf 
+ 
+ 
+ 
+#Open the NAM trace file 
+set nf [open out1.nam w] 
+Sns namtrace-all $nf 
+ 
+ 
+#Define a 'finish' procedure 
+proc finish {} { 
+global ns tf nf 
+ 
+$ns flush-trace 
+close $tf 
+Lab Manual DCCN–4CSGC2061 
+4CSGC2061 
+13 
+ 
+ 
+ 
+ 
+#Close the NAM trace file 
+close Snf 
+#Execute NAM on the trace file 
+exec nam out.nam & 
+exit 0 
+ 
+} 
+ 
+ 
+ 
+#Create four nodes 
+set no [Sns node] 
+set n1 [Sns node] 
+set n2 [$ns node] 
+set n3 [$ns node] 
+ 
+#Create links between the nodes 
+ 
+$ns duplex-link Sn0 $n2 2Mb 10ms DropTail 
+ 
+$ns duplex-link Sn1 Sn2 2Mb 10ms DropTail 
+Sns duplex-link Sn2 Sn3 1.7Mb 20ms DropTail 
+ 
+ 
+#Set Queue Size of link (n2-n3) to 10 
+ 
+$ns queue-limit Sn2 Sn3 10 
+ 
+ 
+ 
+#Give node position (for NAM) 
+ 
+$ns duplex-link-op Sn0 Sn2 orient right-down 
+ 
+$ns duplex-link-op Sn1 Sn2 orient right-up 
+Sns duplex-link-op Sn2 Sn3 orient right 
+
+ 
+ 
+ 
+ 
+#Monitor the queue for link (n2-n3). (for NAM) 
+ 
+Sns duplex-link-op Sn2 Sn3 queuePos 0.5 
+ 
+ 
+ 
+# Setup a TCP connection 
+set tcp [new Agent/TCP] 
+Stcp set class_2 
+Sns attach-agent Sno Stcp 
+ 
+set sink [new Agent/TCPSink] 
+Sns attach-agent Sn3 Ssink 
+Sns connect Stcp $sink 
+Stcp set fid_1 
+ 
+ 
+ 
+# Setup a FTP over TCP connection 
+set ftp [new Application/FTP] 
+Sftp attach-agent Stcp 
+Sftp set type FTP 
+ 
+ 
+#Setup a UDP connection 
+set udp [new Agent/UDP] 
+Sns attach-agent Sn1 Sudp 
+set null [new Agent/Null] 
+$ns attach-agent Sn3 Snull 
+Sns connect Sudp $null 
+Sudp set fid_2 
+
+ 
+ 
+ 
+#Setup a CBR over UDP connection 
+set cbr [new Application/Traffic/CBR] 
+Scbr attach-agent Sudp 
+Scbr set type_ CBR 
+ 
+Scbr set packet_size_1000 
+Scbr set rate 1mb 
+Scbr set random_ false 
+ 
+ 
+ 
+#Schedule events for the CBR and FTP agents 
+Sns at 0.1 "Scbr start" 
+$ns at 1.0 "$ftp start” 
+Sns at 4.0 "Sftp stop" 
+Sns at 4.5 "Scbr stop" 
+ 
+ 
+#Detach tcp and sink agents (not really necessary) 
+ 
+Sns at 4.5 "Sns detach-agent Sno Stcp; $ns detach-agent Sn3 Ssink" 
+ 
+ 
+ 
+#Call the finish procedure after 5 seconds of simulation time 
+Sns at 5.0 "finish" 
+ 
+ 
+#Print CBR packet size and interval 
+ 
+puts "CBR packet size = [Scbr set packet_size_]" 
+puts "CBR interval = [Scbr set interval_]" 
+ 
+ 
+ 
+ 
+ 
+#Run the simulation 
+ 
+$ns run 
+ 
+ 
+ 
+Awk file: 
+ 
+Note: Create the file using gedit command and save it with the extension of. Awk in order to find 
+the number of packets drop in the trace file. We can name it as out1.awk. 
+ 
+BEGIN{ 
+ 
+count=0; 
+ 
+}{ 
+ 
+if($1=="d") 
+count++ 
+} 
+END{ 
+printf("The Total no of Packets Drop is : %d\n\n", count) 
+ 
+} 
